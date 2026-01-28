@@ -68,6 +68,8 @@ go build -o process-monitor
 go build -o process-monitor.exe
 ```
 
+---
+
 ## Usage
 
 ### Take a process snapshot
