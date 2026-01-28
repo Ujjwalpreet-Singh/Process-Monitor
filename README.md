@@ -62,3 +62,35 @@ OS-specific code is isolated using Go build tags, while analysis logic remains p
 #### Linux / WSL
 ```bash
 go build -o process-monitor
+```
+#### Windows
+```bash
+go build -o process-monitor.exe
+```
+
+## Usage
+
+### Take a process snapshot
+```bash
+./process-monitor --mode snapshot
+```
+
+### Save a snapshot
+```bash
+./process-monitor --mode snapshot --out out.json
+```
+
+### Build a process tree (Live)
+```bash
+./process-monitor --mode graph
+```
+
+### Build a process tree from an old snapshot
+```bash
+./process-monitor --mode graph --old old.json
+```
+
+### Diff two saved snapshots
+```bash
+./process --mode diff --old old.json --new.json
+```
