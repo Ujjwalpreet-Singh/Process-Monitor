@@ -1,0 +1,9 @@
+#Binaries
+process-monitor
+process-monitor.exe
+*.exe
+
+#Output Folders
+windows/
+linux/
+*.json
