@@ -23,6 +23,13 @@ type ProcessInfo struct {
 	PID  int
 	PPID int
 	Name string
+	StartTime uint64
+	OsTime time.Time
+}
+
+type ProcessKey struct {
+	PID            int
+	StartTime time.Time
 }
 
 type Event struct {
@@ -125,7 +132,7 @@ func (a *Agent) TakeSnapshot(ctx context.Context) (*ProcessSnapshot, error) {
 /* =======================
 	APIs
 	====================== */
-	
+
 func BuildProcessGraph(snapshot ProcessSnapshot) []*ProcessNode {
 	// PID -> node
 	nodes := make(map[int]*ProcessNode)
@@ -167,13 +174,13 @@ func PrintProcessTree(nodes []*ProcessNode, prefix string,depth int) {
 	if depth == 0 {
 		return
 	}
-	
+
 	for i, node := range nodes {
 		isLast := i == len(nodes)-1
 
 		branch := "├── "
 		pipe := "│   "
-		
+
 
 		if isLast {
 			branch = "└── "
@@ -207,32 +214,26 @@ func SaveProcessGraphToFile(roots []*ProcessNode, path string) error {
 }
 
 func DiffSnapshots(oldSnap, newSnap ProcessSnapshot) SnapshotDiff {
-	oldMap := make(map[int]ProcessInfo)
-	newMap := make(map[int]ProcessInfo)
+	oldMap := make(map[ProcessKey]ProcessInfo)
+	newMap := make(map[ProcessKey]ProcessInfo)
 
 	for _, p := range oldSnap.Processes {
-		oldMap[p.PID] = p
+		oldMap[ProcessKeyFromInfo(p)] = p
 	}
-
 	for _, p := range newSnap.Processes {
-		newMap[p.PID] = p
+		newMap[ProcessKeyFromInfo(p)] = p
 	}
 
-	diff := SnapshotDiff{
-		Started: []ProcessInfo{},
-		Exited:  []ProcessInfo{},
-	}
+	diff := SnapshotDiff{}
 
-	// Started: in new, not in old
-	for pid, p := range newMap {
-		if _, exists := oldMap[pid]; !exists {
+	for k, p := range newMap {
+		if _, ok := oldMap[k]; !ok {
 			diff.Started = append(diff.Started, p)
 		}
 	}
 
-	// Exited: in old, not in new
-	for pid, p := range oldMap {
-		if _, exists := newMap[pid]; !exists {
+	for k, p := range oldMap {
+		if _, ok := newMap[k]; !ok {
 			diff.Exited = append(diff.Exited, p)
 		}
 	}
@@ -240,9 +241,10 @@ func DiffSnapshots(oldSnap, newSnap ProcessSnapshot) SnapshotDiff {
 	return diff
 }
 
+
 func SaveSnapshotToFile(snapshot ProcessSnapshot, path string) error {
 	cleanpath := filepath.Clean(path)
-	
+
 	dir := filepath.Dir(cleanpath)
 	if dir != "." && dir != ""{
 		if _,err := os.Stat(dir); os.IsNotExist(err){
@@ -282,4 +284,9 @@ func LoadSnapshotFromFile(path string) (*ProcessSnapshot, error) {
     return &snapshot, nil
 }
 
-
+func ProcessKeyFromInfo(p ProcessInfo) ProcessKey {
+	return ProcessKey{
+		PID:       p.PID,
+		StartTime: p.OsTime,
+	}
+}

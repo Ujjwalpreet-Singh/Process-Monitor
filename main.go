@@ -9,7 +9,7 @@ import (
 
 func main() {
 	ctx := context.Background()
-	
+
 	events := flag.Int("events",100,"Maximum amount of events to show")
 	mode := flag.String("mode", "snapshot", "snapshot | graph | diff")
 	interval := flag.Int("interval", 3, "seconds between snapshots (diff mode)")
@@ -28,7 +28,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
-		
+
 		if *out != "" {
 			if err := SaveSnapshotToFile(*snapshot,*out); err != nil{
 				panic(err)
@@ -36,14 +36,14 @@ func main() {
 			fmt.Println("Snapshot saved to",*out)
 			return
 		}
-		
+
 		fmt.Printf("Snapshot at %s\n", snapshot.Timestamp)
 		for _, p := range snapshot.Processes {
 			fmt.Printf("PID=%d PPID=%d NAME=%s\n", p.PID, p.PPID, p.Name)
 		}
 
 	case "graph":
-		
+
 		var snapshot *ProcessSnapshot
 		var err error
 		if *oldpath != "" {
@@ -63,18 +63,18 @@ func main() {
 		PrintProcessTree(roots, "",10)
 
 	case "diff":
-	
+
 		if *oldpath != "" && *newpath != "" {
 			oldSnap,err := LoadSnapshotFromFile(*oldpath)
 			if err != nil{
 				panic(err)
 			}
-			
+
 			newSnap,err := LoadSnapshotFromFile(*newpath)
 			if err != nil{
 				panic(err)
 			}
-			
+
 			diff := DiffSnapshots(*oldSnap, *newSnap)
 
 			fmt.Println("\nProcesses started:")
@@ -85,7 +85,7 @@ func main() {
 			fmt.Println("\nProcesses exited:")
 			for _, p := range diff.Exited {
 				fmt.Printf("PID=%d PPID=%d NAME=%s\n", p.PID, p.PPID, p.Name)
-				
+
 			return
 			}
 		fmt.Println("Taking first snapshot...")
@@ -119,4 +119,3 @@ func main() {
 		fmt.Println("Use --mode snapshot | graph | diff")
 	}
 }
-

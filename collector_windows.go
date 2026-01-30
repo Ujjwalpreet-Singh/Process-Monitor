@@ -37,12 +37,37 @@ func (w *WindowsProcessCollector) Snapshot(ctx context.Context) (ProcessSnapshot
 	}
 
 	for {
+		pid := entry.ProcessID
 		name := windows.UTF16ToString(entry.ExeFile[:])
-		snapshot.Processes = append(snapshot.Processes, ProcessInfo{
-			PID:  int(entry.ProcessID),
-			PPID: int(entry.ParentProcessID),
-			Name: name,
-		})
+
+		hProc, err := windows.OpenProcess(
+			windows.PROCESS_QUERY_LIMITED_INFORMATION,
+			false,
+			pid,
+		)
+		if err == nil{
+			var creation,exit,kernel,user windows.Filetime
+
+			err = windows.GetProcessTimes(
+				hProc,
+				&creation,
+				&exit,
+				&kernel,
+				&user,
+			)
+			windows.CloseHandle(hProc)
+			if err == nil {
+				startTime := time.Unix(0, creation.Nanoseconds())
+				snapshot.Processes = append(snapshot.Processes, ProcessInfo{
+					PID:  int(entry.ProcessID),
+					PPID: int(entry.ParentProcessID),
+					Name: name,
+					StartTime: 0,
+					OsTime: startTime,
+				})
+			}
+		}
+
 
 		if err := windows.Process32Next(handle, &entry); err != nil {
 			break

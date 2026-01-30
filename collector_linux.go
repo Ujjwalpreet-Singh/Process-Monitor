@@ -45,7 +45,7 @@ func (l *LinuxProcessCollector) Snapshot(ctx context.Context) (ProcessSnapshot, 
 		}
 
 		parts := strings.Fields(string(data))
-		if len(parts) < 4 {
+		if len(parts) < 22 {
 			continue
 		}
 
@@ -54,14 +54,62 @@ func (l *LinuxProcessCollector) Snapshot(ctx context.Context) (ProcessSnapshot, 
 			continue
 		}
 
+		startTicks,err := strconv.ParseUint(parts[21],10,64)
+		if err != nil{
+			continue
+		}
+
+		bootTime, _ := GetBootTime()
+		hz:= GetClockTicks()
+
 		name := strings.Trim(parts[1], "()")
+
+		converttime := ConvertStartTicksToTime(startTicks, bootTime, hz)
 
 		snapshot.Processes = append(snapshot.Processes, ProcessInfo{
 			PID:  pid,
 			PPID: ppid,
 			Name: name,
+			StartTime: startTicks,
+			OsTime: converttime,
 		})
 	}
 
 	return snapshot, nil
+}
+
+
+func GetBootTime() (time.Time, error) {
+	data, err := os.ReadFile("/proc/stat")
+	if err != nil {
+		return time.Time{}, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "btime ") {
+			parts := strings.Fields(line)
+			if len(parts) != 2 {
+				continue
+			}
+
+			sec, err := strconv.ParseInt(parts[1], 10, 64)
+			if err != nil {
+				return time.Time{}, err
+			}
+
+			return time.Unix(sec, 0), nil
+		}
+	}
+
+	return time.Time{}, fmt.Errorf("btime not found")
+}
+
+func GetClockTicks() int64 {
+	return 100
+}
+
+func ConvertStartTicksToTime(startTicks uint64, bootTime time.Time, hz int64) time.Time {
+	seconds := float64(startTicks) / float64(hz)
+	return bootTime.Add(time.Duration(seconds * float64(time.Second)))
 }
